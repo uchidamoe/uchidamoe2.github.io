@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>雪だるまゲーム</title>
+
+    <style>
+        #a {
+            position: absolute;
+            top: 400px;
+            left: 500px;
+        }
+
+        .circle {
+            width: 90px;
+            height: 90px;
+            border-radius: 45%;
+            background: white;
+            position: absolute;
+            top: 540px;
+            left: 585px;
+            animation: animName 2s linear infinite;
+        }
+
+        @keyframes animName {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(-360deg);
+            }
+        }
+
+        .circle2 {
+            width: 90px;
+            height: 90px;
+            border-radius: 45%;
+            background: white;
+            /*背景色*/
+            position: absolute;
+            top: 540px;
+            left: 300px;
+        }
+
+        #mic {
+            position: absolute;
+            margin: auto;
+            top: 20px;
+            left: 0;
+            right: 0;
+            animation: fuwafuwa 3s infinite;
+        }
+
+
+
+        @keyframes fuwafuwa {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(45px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        .fa-comment {
+            position: relative;
+            color: black;
+            background: #f5f5f5;
+            line-height: 1.4;
+            padding: 0.25em 0.5em;
+            margin: 2em 0 0.5em;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .fa-comment :before {
+            position: absolute;
+            font-family: "Font Awesome 5 Free", 'Quicksand', 'Avenir', 'Arial', sans-serif;
+            font-weight: 900;
+            content: 'myID';
+            background: #E2AEA8;
+            color: #fff;
+            left: 0px;
+            bottom: 100%;
+            border-radius: 5px 5px 0 0;
+            padding: 3px 7px 1px;
+            font-size: 0.8em;
+            line-height: 1;
+            letter-spacing: 0.05em
+        }
+
+        .fa-apple {
+            position: relative;
+            color: black;
+            background: #f5f5f5;
+            line-height: 1.4;
+            padding: 0.25em 0.5em;
+            margin: 2em 0 0.5em;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .fa-apple :before {
+            position: absolute;
+            font-family: "Font Awesome 5 Free", 'Quicksand', 'Avenir', 'Arial', sans-serif;
+            font-weight: 900;
+            content: 'roomID';
+            background: #E3C1BB;
+            color: #fff;
+            left: 0px;
+            bottom: 100%;
+            border-radius: 5px 5px 0 0;
+            padding: 3px 7px 1px;
+            font-size: 0.8em;
+            line-height: 1;
+            letter-spacing: 0.05em
+        }
+
+
+        #score1 {
+            position: absolute;
+            top: 120px;
+            left: 1500px;
+            background: linear-gradient(transparent 70%, #d2b48c 70%);
+            font-size: 2.0em;
+        }
+
+        #score1 :before {
+
+            font-family: "Font Awesome 5 Free";
+            content: "\f2f2";
+            font-weight: 900;
+
+        }
+
+        #myid {
+            font-weight: 600;
+        }
+
+        #room {
+            font-weight: 600;
+        }
+
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.7.2/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function reply(text);
+        });
+
+    </script>
+
+    <script src="https://kit.fontawesome.com/7a7846ac7f.js" crossorigin="anonymous"></script>
+
+<body>
+    <div>
+        <div class="fas fa-comment fa-lg"> <span id="myid"></span></div><br>
+        <div class="fab fa-apple fa-lg"> <span id="room"></span></div>
+        <div id="score1" class="fas fa-stopwatch"> スコア</div>
+    </div>
+
+    <p class="center-box"><img id="mic" src="onpu.png" width="100"></p>
+    <div id="result-div" class="large-text"></div>
+    <script>
+        let snowflakes = [];
+        let room = "s1317109";
+        let socket = io.connect('https://qa.fujimura.com');
+        let myid;
+        let speedX = 0;
+        let speedY = 0;
+        let yuki;
+
+        const resultDiv = document.querySelector('#result-div');
+        const micDiv = document.querySelector('#mic');
+        let speakingtime = 0;
+
+        // 音声認識機能(Chrome)
+        let rec = new webkitSpeechRecognition();
+        let stopped = true;
+        rec.continuous = true;
+        rec.interimResults = false;
+        rec.lang = 'ja-JP';
+
+        micDiv.onclick = function() {
+            if (stopped == true) {
+                stopped = false;
+                resultDiv.innerHTML = "";
+                rec.start();
+            } else {
+                stopped = true;
+                rec.stop();
+            }
+        }
+
+        rec.onstart = function() {
+            console.log('on start');
+            micDiv.setAttribute("src", "onpu.png");
+            speakingtime = 0;
+        };
+
+        rec.onend = function() {
+            console.log('on end');
+            micDiv.setAttribute("src", "onpu.png");
+            if (stopped == false) {
+                setTimeout(function() {
+                    rec.start();
+                }, speakingtime);
+            }
+        };
+
+        rec.onresult = function(e) {
+            rec.stop();
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) {
+                    console.log(e);
+                    let text = e.results[i][0].transcript;
+                    console.log(text);
+                    speakingtime = text.length * 200;
+                    console.log("estimate:", speakingtime, "ms");
+                    speak(reply(text));
+                }
+            }
+        }
+
+        function reply(text) {
+
+            let re = new RegExp(".*スタート.*");
+            let audio = document.createElement('audio');
+            audio.src = 'music.mp3'
+
+            if (re.test(text)) {
+                audio.play();
+                return " "
+            } else {
+                return "よくわかりません";
+            }
+        }
+
+        // 発話機能をインスタンス化
+        let msg = new SpeechSynthesisUtterance();
+        let voices = window.speechSynthesis.getVoices();
+
+        function speak(text) {
+            msg.voice = voices[7];
+            msg.volume = 1.0;
+            msg.rate = 1.0;
+            msg.pitch = 1.0;
+
+            msg.text = text;
+            msg.lang = 'ja-JP';
+
+            // 発話実行
+            speechSynthesis.speak(msg);
+        }
+
+        // 終了時の処理
+        msg.onend = function(event) {
+            console.log('喋った時間：' + event.elapsedTime + 'ms');
+        }
+
+        //スマホで操作         
+        document.querySelector("#room").innerHTML = room;
+        socket.on('mylogin', function(data) {
+            myid = data;
+            socket.emit('join', room);
+            document.querySelector("#myid").innerHTML = myid;
+            console.log("あなたのID: ", myid);
+        });
+
+        socket.on('sensor', function(data) {
+            console.log(data.g);
+            speedX = 0.05 * parseInt(data.g);
+            speedY = 0.05 * parseInt(data.b);
+        });
+
+        let x = 0;
+        let y = 0;
+        let targetX = 0;
+        let targetY = 0;
+        let targetX_speed = 5;
+        let targetY_speed = 5;
+
+        let score = 1;
+
+        function preload() {
+            yuki = loadImage("yukidaruma_boy2.png")
+            atama = loadImage("snowman_yukidaruma_sandan2.png")
+        }
+
+        function setup() {
+            createCanvas(1750, 750);
+            background(0);
+            x = width / 2;
+            y = height / 2;
+            targetX = random(width);
+            targetY = random(height);
+        }
+
+
+        var timer = window.setInterval(() => {
+            draw();
+            displayScore();
+        }, 200);
+
+        //以下375行目までp5.jsのサンプルを参考
+        function draw() {
+            background(0);
+            x = x + speedX;
+            y = y + speedY;
+
+            if (x > width - 100) x = width - 200;
+            if (x < 0) x = 0;
+            if (y > height - 100) y = height - 100;
+            if (y < 0) y = 0;
+            let distance = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+            console.log(distance);
+
+            ellipse(targetX, targetY, 80, 80);
+            targetX = targetX + targetX_speed;
+            targetY = targetY + targetY_speed;
+            if (targetX < 0 || targetX > width) {
+                targetX_speed = targetX_speed * -1;
+            }
+            if (targetY < 0 || targetY > height) {
+                targetY_speed = targetY_speed * -1;
+            }
+
+            if (distance < 100) image(atama, targetX - 40, targetY - 110, 80, 80);
+            noStroke();
+
+            image(yuki, x, y, 100, 100);
+
+            let t = frameCount / 120;
+
+            noStroke();
+            fill(255, 255, 255);
+            for (let i = 0; i < random(1); i++) {
+                snowflakes.push(new snowflake());
+            }
+            for (let snow of snowflakes) {
+                snow.update(t);
+                snow.display();
+            }
+
+            function snowflake() {
+                this.posX = width;
+                this.posY = random(-50, 0);
+                this.initialangle = random(0, 2 * PI);
+                this.size = random(1, 5);
+
+                this.radius = sqrt(random(pow(width, 2)));
+
+                this.update = function(time) {
+                    let angle = this.initialangle;
+                    this.posX = width + this.radius * sin(angle);
+                    this.posY += pow(this.size, 0.5);
+                };
+
+                this.display = function() {
+                    ellipse(this.posX, this.posY, this.size);
+                };
+            }
+        }
+
+
+        function displayScore() {
+            let distance = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+
+            score += 1;
+            let score1 = document.getElementById("score1");
+            score1.innerHTML = " Score: " + score;
+            if (distance < 100 || score >= 100)
+                window.clearInterval(timer);
+        }
+
+    </script>
+</body>
+
+</head>
+
+</html>
